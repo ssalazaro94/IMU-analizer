@@ -42,6 +42,14 @@ Lo que **falta** para producción (ver también "Pendientes" al final):
   Errores devuelven HTTP 422 con `{"detail": "..."}` (CSV sin columnas requeridas, señal sin
   suficientes eventos detectables, parámetros inválidos, pierna mal declarada, etc.)
 
+- `POST /report` — recibe JSON `{"resultado": <la respuesta completa de /analyze>, "nombre_archivo":
+  "opcional.csv"}` y devuelve un PDF (`application/pdf`, 2 páginas): página 1 el mismo gráfico de
+  "Detección de eventos de marcha" que el notebook (celda 20, recortado y normalizado) más un
+  encabezado con metadata; página 2 una tabla de métricas por ciclo + los promedios/cadencia. No
+  vuelve a correr el algoritmo — solo necesita el JSON que ya devolvió `/analyze` (o el guardado en
+  `analysis_results.raw_json` en Supabase), así que no hace falta el CSV original de nuevo. Usa
+  `matplotlib` (backend `Agg`, sin display) — ver `report.py`.
+
 - `GET /docs` — Swagger UI interactivo (probar el endpoint desde el navegador, generado
   automáticamente por FastAPI).
 
@@ -220,6 +228,9 @@ IAM invoker) en vez de depender solo de CORS.
 
 ## Pendientes
 
+- **`/report` (PDF) todavía no está deployado en Render** — se agregó en esta sesión (2026-09-11)
+  y solo se probó localmente (`pytest` no lo cubre todavía; se probó a mano con `curl` generando
+  un PDF real y se inspeccionó visualmente). Hace falta commitear/pushear para que Render lo tenga.
 - Probar con un CSV real del sensor Xsens DOT (derecha e izquierda) y, si hace falta, recalibrar
   los umbrales default contra esos datos reales.
 - Probar el build de Docker y el deploy a Render de punta a punta.
