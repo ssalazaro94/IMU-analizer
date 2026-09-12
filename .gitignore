@@ -9,3 +9,5 @@ venv/
 
 # Secretos / config local
 .env
+.vercel
+.env*
