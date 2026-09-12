@@ -35,6 +35,7 @@ export function UploadDashboard({
   const [error, setError] = useState<string | null>(null);
   const [reanalyzingId, setReanalyzingId] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const supabase = useMemo(() => createClient(), []);
 
@@ -141,6 +142,28 @@ export function UploadDashboard({
       URL.revokeObjectURL(url);
     } finally {
       setDownloadingId(null);
+    }
+  }
+
+  async function handleDelete(fileId: string) {
+    if (!window.confirm("¿Borrar este archivo y sus resultados? Esta acción no se puede deshacer.")) {
+      return;
+    }
+    setDeletingId(fileId);
+    try {
+      const response = await fetch(`/api/files/${fileId}`, { method: "DELETE" });
+      if (!response.ok) {
+        const body = await response.json().catch(() => null);
+        setError(body?.error ?? "No se pudo borrar el archivo.");
+        return;
+      }
+      setFiles((prev) => prev.filter((f) => f.id !== fileId));
+      setResults((prev) => {
+        const { [fileId]: _omit, ...resto } = prev;
+        return resto;
+      });
+    } finally {
+      setDeletingId(null);
     }
   }
 
@@ -263,8 +286,8 @@ export function UploadDashboard({
                 </dl>
               )}
 
-              {(file.status === "done" || file.status === "error") && (
-                <div className="mt-3 flex gap-2">
+              <div className="mt-3 flex flex-wrap gap-2">
+                {(file.status === "done" || file.status === "error") && (
                   <button
                     onClick={() => handleReanalyze(file.id)}
                     disabled={reanalyzingId === file.id}
@@ -272,17 +295,24 @@ export function UploadDashboard({
                   >
                     {reanalyzingId === file.id ? "Enviando..." : "Volver a analizar"}
                   </button>
-                  {file.status === "done" && (
-                    <button
-                      onClick={() => handleDownloadReport(file.id)}
-                      disabled={downloadingId === file.id}
-                      className="rounded-lg border border-neutral-300 px-3 py-1.5 text-xs font-medium text-neutral-700 transition hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      {downloadingId === file.id ? "Generando..." : "Descargar reporte (PDF)"}
-                    </button>
-                  )}
-                </div>
-              )}
+                )}
+                {file.status === "done" && (
+                  <button
+                    onClick={() => handleDownloadReport(file.id)}
+                    disabled={downloadingId === file.id}
+                    className="rounded-lg border border-neutral-300 px-3 py-1.5 text-xs font-medium text-neutral-700 transition hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {downloadingId === file.id ? "Generando..." : "Descargar reporte (PDF)"}
+                  </button>
+                )}
+                <button
+                  onClick={() => handleDelete(file.id)}
+                  disabled={deletingId === file.id}
+                  className="ml-auto rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {deletingId === file.id ? "Borrando..." : "Borrar"}
+                </button>
+              </div>
             </div>
           );
         })}

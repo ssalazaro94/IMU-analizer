@@ -69,6 +69,27 @@ armar cada pieza por separado.
   - Alta de un `root` o cambio de rol: **manual**, vía SQL (`update public.profiles set role =
     'root' where id = '<uuid>'`) — no hay UI para gestionar roles todavía.
 
+### Cómo agregar un usuario nuevo
+
+No hay pantalla de registro en la app — se hace a mano desde el dashboard de Supabase:
+
+1. **Crear el usuario**: dashboard de Supabase (https://supabase.com/dashboard/project/qybvicgpaaznpjpatdzi)
+   → **Authentication → Users → Add user**. Cargar email y contraseña, y tildar **"Auto Confirm
+   User"** (si no, el usuario queda sin confirmar y no puede loguearse hasta verificar el email).
+2. **El rol se asigna solo**: el trigger `on_auth_user_created` crea automáticamente la fila en
+   `profiles` con `role = 'admin'` apenas se crea el usuario en `auth.users`. No hace falta hacer
+   nada más si el usuario va a ser `admin` (subir CSV, ver resultados, re-analizar, descargar
+   reportes).
+3. **Si el usuario necesita ser `root`** (además de lo anterior, puede editar los parámetros
+   globales del algoritmo en `equation_settings`): ir a **SQL Editor** en el dashboard y correr:
+   ```sql
+   update public.profiles set role = 'root' where id = (
+     select id from auth.users where email = 'el-email-del-usuario@ejemplo.com'
+   );
+   ```
+4. **Listo**: el usuario ya puede entrar en `/login` con el email y la contraseña que se le cargó
+   en el paso 1.
+
 ### Esquema de base de datos
 
 Definido en `supabase/migrations/20260911190000_esquema_inicial.sql` (escrito de forma
@@ -85,9 +106,14 @@ idempotente: `create table if not exists`, `drop policy if exists` + `create pol
   `deteccion_lado`, métricas resumidas, `raw_json` con la respuesta completa del microservicio).
   **Cada corrida (incluyendo "volver a analizar") inserta una fila nueva** — no se pisa el
   historial, queda como auditoría.
-- RLS: **workspace compartido** — cualquier usuario autenticado (`admin` o `root`) puede ver todos
-  los archivos y resultados de todos los usuarios, no hay aislamiento por uploader. Esto fue una
-  decisión práctica para un equipo clínico chico; revisar si hace falta acotarlo más adelante.
+- RLS (actualizado 2026-09-12, migración `20260912190000_restringir_visibilidad_admin.sql`):
+  **`root` ve todos los archivos y resultados; `admin` solo ve los que él mismo subió**
+  (`uploaded_by = auth.uid()`). `analysis_results` hereda la visibilidad del `files` asociado (por
+  `file_id`, no por `created_by`, porque quien re-analiza no es necesariamente el uploader
+  original). El bucket `csv-uploads` sigue el mismo criterio vía la carpeta `<user_id>/...` en la
+  que ya se guarda cada CSV. No hace falta tocar el frontend: las queries no tienen `.eq(...)` de
+  usuario, dependen enteramente de RLS (incluida la suscripción de Realtime, que respeta RLS por
+  usar el cliente browser con la sesión del usuario, no `service_role`).
 - Realtime habilitado sobre `files` y `analysis_results` (`alter publication supabase_realtime add
   table ...`) — así el frontend se entera de cambios de estado sin hacer polling.
 
