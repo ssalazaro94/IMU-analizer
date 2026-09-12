@@ -10,12 +10,12 @@ export default function LoginPage() {
 
   return (
     <main className="flex flex-1 items-center justify-center px-4 py-16">
-      <div className="w-full max-w-sm rounded-2xl border border-neutral-200 bg-white p-8 shadow-sm">
+      <div className="w-full max-w-sm rounded-lg border border-neutral-200 bg-white p-8">
         <div className="mb-8 text-center">
-          <h1 className="text-xl font-medium text-neutral-900">
+          <h1 className="text-lg font-semibold text-neutral-900">
             Análisis de Marcha IMU
           </h1>
-          <p className="mt-1 text-sm text-neutral-500">
+          <p className="mt-1 text-sm text-neutral-600">
             Iniciá sesión para continuar
           </p>
         </div>
@@ -34,7 +34,7 @@ export default function LoginPage() {
               type="email"
               autoComplete="email"
               required
-              className="w-full rounded-xl border border-neutral-300 px-3.5 py-2.5 text-sm text-neutral-900 outline-none transition focus:border-[#1A73E8] focus:ring-2 focus:ring-[#1A73E8]/20"
+              className="w-full rounded-md border border-neutral-300 px-3.5 py-2.5 text-sm text-neutral-900 outline-none transition focus:border-[#1A73E8] focus:ring-1 focus:ring-[#1A73E8]"
               placeholder="vos@ejemplo.com"
             />
           </div>
@@ -52,7 +52,7 @@ export default function LoginPage() {
               type="password"
               autoComplete="current-password"
               required
-              className="w-full rounded-xl border border-neutral-300 px-3.5 py-2.5 text-sm text-neutral-900 outline-none transition focus:border-[#1A73E8] focus:ring-2 focus:ring-[#1A73E8]/20"
+              className="w-full rounded-md border border-neutral-300 px-3.5 py-2.5 text-sm text-neutral-900 outline-none transition focus:border-[#1A73E8] focus:ring-1 focus:ring-[#1A73E8]"
               placeholder="••••••••"
             />
           </div>
@@ -66,7 +66,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={pending}
-            className="w-full rounded-xl bg-[#1A73E8] px-4 py-2.5 text-sm font-medium text-white transition hover:bg-[#1558b0] disabled:cursor-not-allowed disabled:opacity-60"
+            className="w-full rounded-md bg-[#1A73E8] px-4 py-2.5 text-sm font-medium text-white transition hover:bg-[#1558b0] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {pending ? "Ingresando..." : "Iniciar sesión"}
           </button>

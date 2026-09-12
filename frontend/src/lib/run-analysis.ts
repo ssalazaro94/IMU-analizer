@@ -5,6 +5,10 @@ import type { AnalysisServiceResponse, EquationSettings, Pierna } from "@/lib/ty
 
 const ANALYSIS_SERVICE_URL = process.env.NEXT_PUBLIC_ANALYSIS_SERVICE_URL!;
 
+const MENSAJE_COLD_START =
+  "No se pudo conectar con el servicio de análisis. Si estuvo inactivo puede tardar " +
+  "hasta un minuto en reactivarse — probá 'Volver a analizar' en un momento.";
+
 /**
  * Llama al microservicio y persiste el resultado (o el error) en Supabase.
  * Pensado para correr dentro de `after()`, desacoplado de la respuesta al cliente,
@@ -33,14 +37,28 @@ export async function runAnalysisAndPersist(params: {
     form.set("distancia_min_balanceo_s", String(settings.distancia_min_balanceo_s));
     form.set("distancia_min_minimos_s", String(settings.distancia_min_minimos_s));
 
-    const response = await fetch(`${ANALYSIS_SERVICE_URL}/analyze`, {
-      method: "POST",
-      body: form,
-    });
+    let response: Response;
+    try {
+      response = await fetch(`${ANALYSIS_SERVICE_URL}/analyze`, { method: "POST", body: form });
+    } catch {
+      throw new Error(MENSAJE_COLD_START);
+    }
 
     if (!response.ok) {
-      const body = await response.text();
-      throw new Error(`Microservicio respondió ${response.status}: ${body.slice(0, 500)}`);
+      // 502/503/504 son típicos del proxy de Render mientras el contenedor
+      // todavía está despertando de un cold start (no llega a responder JSON).
+      if ([502, 503, 504].includes(response.status)) {
+        throw new Error(MENSAJE_COLD_START);
+      }
+
+      let detalle: string | null = null;
+      try {
+        const cuerpo = await response.json();
+        if (typeof cuerpo?.detail === "string") detalle = cuerpo.detail;
+      } catch {
+        // la respuesta de error no era JSON, seguimos con el mensaje genérico
+      }
+      throw new Error(detalle ?? `El servicio de análisis respondió con un error (${response.status}).`);
     }
 
     const result: AnalysisServiceResponse = await response.json();

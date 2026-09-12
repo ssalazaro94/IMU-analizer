@@ -6,7 +6,10 @@ import type { EquationSettings, Pierna } from "@/lib/types";
 
 export const maxDuration = 60;
 
-const MAX_CSV_BYTES = 20 * 1024 * 1024; // 20MB
+// Vercel limita el body de las Serverless Functions (runtime Node.js) a ~4.5MB
+// a nivel de plataforma, sin importar lo que se configure acá — dejamos margen
+// para el resto del multipart (boundary, otros campos del form).
+const MAX_CSV_BYTES = 4 * 1024 * 1024; // 4MB
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -29,7 +32,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Pierna inválida." }, { status: 422 });
   }
   if (file.size === 0 || file.size > MAX_CSV_BYTES) {
-    return NextResponse.json({ error: "El archivo está vacío o supera 20MB." }, { status: 422 });
+    return NextResponse.json({ error: "El archivo está vacío o supera 4MB." }, { status: 422 });
   }
 
   const { data: settings, error: settingsError } = await supabase

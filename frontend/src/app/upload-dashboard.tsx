@@ -13,10 +13,10 @@ const ESTADO_LABEL: Record<FileStatus, string> = {
 };
 
 const ESTADO_CLASS: Record<FileStatus, string> = {
-  pending: "bg-neutral-100 text-neutral-600",
-  processing: "bg-blue-50 text-[#1A73E8]",
-  done: "bg-green-50 text-green-700",
-  error: "bg-red-50 text-red-700",
+  pending: "text-neutral-600",
+  processing: "text-[#1A73E8]",
+  done: "text-green-700",
+  error: "text-red-600",
 };
 
 export function UploadDashboard({
@@ -148,15 +148,15 @@ export function UploadDashboard({
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10">
       <header className="flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-medium text-neutral-900">Análisis de Marcha IMU</h1>
-          <p className="text-sm text-neutral-500">
+          <h1 className="text-lg font-semibold text-neutral-900">Análisis de Marcha IMU</h1>
+          <p className="text-sm text-neutral-600">
             {user.email} · {user.role === "root" ? "Root" : "Admin"}
           </p>
         </div>
         <form action={logout}>
           <button
             type="submit"
-            className="rounded-xl border border-neutral-300 px-3.5 py-2 text-sm font-medium text-neutral-700 transition hover:bg-neutral-50"
+            className="rounded-md border border-neutral-300 px-3.5 py-2 text-sm font-medium text-neutral-700 transition hover:bg-neutral-50"
           >
             Cerrar sesión
           </button>
@@ -165,9 +165,9 @@ export function UploadDashboard({
 
       <form
         onSubmit={handleSubmit}
-        className="space-y-4 rounded-2xl border border-neutral-200 bg-white p-6 shadow-sm"
+        className="space-y-4 rounded-lg border border-neutral-200 bg-white p-6"
       >
-        <h2 className="text-sm font-medium text-neutral-900">Subir CSV</h2>
+        <h2 className="text-sm font-semibold text-neutral-900">Subir CSV</h2>
 
         <input
           type="file"
@@ -181,7 +181,7 @@ export function UploadDashboard({
           <select
             value={pierna}
             onChange={(e) => setPierna(e.target.value as Pierna)}
-            className="w-full rounded-xl border border-neutral-300 px-3.5 py-2.5 text-sm text-neutral-900 outline-none focus:border-[#1A73E8] focus:ring-2 focus:ring-[#1A73E8]/20"
+            className="w-full rounded-md border border-neutral-300 px-3.5 py-2.5 text-sm text-neutral-900 outline-none focus:border-[#1A73E8] focus:ring-1 focus:ring-[#1A73E8]"
           >
             <option value="derecha">Derecha</option>
             <option value="izquierda">Izquierda</option>
@@ -193,17 +193,17 @@ export function UploadDashboard({
         <button
           type="submit"
           disabled={uploading}
-          className="w-full rounded-xl bg-[#1A73E8] px-4 py-2.5 text-sm font-medium text-white transition hover:bg-[#1558b0] disabled:cursor-not-allowed disabled:opacity-60"
+          className="w-full rounded-md bg-[#1A73E8] px-4 py-2.5 text-sm font-medium text-white transition hover:bg-[#1558b0] disabled:cursor-not-allowed disabled:opacity-60"
         >
           {uploading ? "Subiendo..." : "Analizar"}
         </button>
       </form>
 
       <section className="space-y-3">
-        <h2 className="text-sm font-medium text-neutral-900">Archivos</h2>
+        <h2 className="text-sm font-semibold text-neutral-900">Archivos</h2>
 
         {files.length === 0 && (
-          <p className="text-sm text-neutral-500">Todavía no subiste ningún archivo.</p>
+          <p className="text-sm text-neutral-600">Todavía no subiste ningún archivo.</p>
         )}
 
         {files.map((file) => {
@@ -211,50 +211,51 @@ export function UploadDashboard({
           return (
             <div
               key={file.id}
-              className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm"
+              className="rounded-lg border border-neutral-200 bg-white p-4"
             >
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium text-neutral-900">
                     {file.nombre_original}
                   </p>
-                  <p className="text-xs text-neutral-500">
+                  <p className="text-xs text-neutral-600">
                     Pierna {file.pierna} · {new Date(file.created_at).toLocaleString()}
                   </p>
                 </div>
-                <span
-                  className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${ESTADO_CLASS[file.status]}`}
-                >
+                <span className={`shrink-0 text-xs font-medium ${ESTADO_CLASS[file.status]}`}>
                   {ESTADO_LABEL[file.status]}
                 </span>
               </div>
 
               {file.status === "error" && file.error_message && (
-                <p className="mt-2 text-xs text-red-600">{file.error_message}</p>
+                <div className="mt-3 rounded-md border border-red-200 bg-red-50 p-3">
+                  <p className="text-xs font-medium text-red-800">No se pudo completar el análisis</p>
+                  <p className="mt-1 text-xs leading-relaxed text-red-700">{file.error_message}</p>
+                </div>
               )}
 
               {file.status === "done" && result && (
                 <dl className="mt-3 grid grid-cols-2 gap-2 border-t border-neutral-100 pt-3 text-xs sm:grid-cols-4">
                   <div>
-                    <dt className="text-neutral-500">Duración de ciclo</dt>
+                    <dt className="text-neutral-600">Duración de ciclo</dt>
                     <dd className="font-medium text-neutral-900">
                       {result.duracion_ciclo_promedio_s?.toFixed(3) ?? "—"} s
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-neutral-500">Tiempo de apoyo</dt>
+                    <dt className="text-neutral-600">Tiempo de apoyo</dt>
                     <dd className="font-medium text-neutral-900">
                       {result.tiempo_apoyo_promedio_s?.toFixed(3) ?? "—"} s
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-neutral-500">Tiempo de balanceo</dt>
+                    <dt className="text-neutral-600">Tiempo de balanceo</dt>
                     <dd className="font-medium text-neutral-900">
                       {result.tiempo_balanceo_promedio_s?.toFixed(3) ?? "—"} s
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-neutral-500">Cadencia</dt>
+                    <dt className="text-neutral-600">Cadencia</dt>
                     <dd className="font-medium text-neutral-900">
                       {result.cadencia_promedio_pasos_min?.toFixed(1) ?? "—"} pasos/min
                     </dd>
