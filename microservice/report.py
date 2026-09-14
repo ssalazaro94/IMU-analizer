@@ -19,6 +19,15 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 
 
+def _pierna_detectada(deteccion: dict) -> str:
+    """Deriva "Derecha"/"Izquierda" del ajuste automático de sentido del eje Z
+    (ver microservice/analysis.py y [[pierna_derecha_izquierda]] en memoria).
+    Los análisis de antes de ese fix no tienen esta info de forma confiable."""
+    if deteccion.get("metodo") != "pierna+auto":
+        return "Sin identificar"
+    return "Derecha" if deteccion["inversion_aplicada"] else "Izquierda"
+
+
 def _pagina_grafico(pdf: PdfPages, resultado: dict, nombre_archivo: str | None) -> None:
     eventos = resultado["eventos"]
     tiempo = eventos["tiempo_normalizado_s"]
@@ -61,7 +70,7 @@ def _pagina_grafico(pdf: PdfPages, resultado: dict, nombre_archivo: str | None) 
     encabezado = (
         "Reporte de análisis de marcha — Análisis de Marcha IMU\n"
         f"Archivo: {nombre_archivo or '(sin nombre)'}    "
-        f"Pierna: {deteccion['pierna_declarada']}    "
+        f"Pierna: {_pierna_detectada(deteccion)}    "
         f"Frecuencia de muestreo: {resultado['frecuencia_muestreo_hz']:.2f} Hz    "
         f"Generado: {generado}\n"
         f"Parámetros — alpha: {parametros['alpha']}, umbral balanceo: "
