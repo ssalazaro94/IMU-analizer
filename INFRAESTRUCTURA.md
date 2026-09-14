@@ -98,7 +98,8 @@ idempotente: `create table if not exists`, `drop policy if exists` + `create pol
 - **`profiles`**: `id`, `role`, `created_at`.
 - **`equation_settings`**: fila única (`id = 1`), parámetros **globales** del algoritmo (`alpha`,
   `umbral_balanceo_deg_s`, `umbral_tc_deg_s`, `distancia_min_balanceo_s`,
-  `distancia_min_minimos_s`, `metodo_deteccion_lado`). Defaults iguales al notebook original.
+  `distancia_min_minimos_s`, más la columna `metodo_deteccion_lado` que quedó sin uso real desde
+  el 2026-09-14 — el microservicio ya no la lee). Defaults iguales al notebook original.
   Solo `root` puede modificarla (RLS).
 - **`files`**: un archivo CSV subido (`uploaded_by`, `nombre_original`, `storage_path`, `pierna`,
   `status` en `pending | processing | done | error`, `error_message`).
@@ -157,8 +158,10 @@ consigue una tarjeta que funcione — ver "Notas de portabilidad" abajo.
 
 ### Variables de entorno en Render
 
-- `METODO_DETECCION_LADO` = `pierna` (default; alternativa: `auto`, la heurística original del
-  notebook — ambos métodos conviven en `analysis.py`).
+Ninguna propia por ahora. (Hasta 2026-09-14 existía `METODO_DETECCION_LADO`; se retiró al
+corregir el bug de pierna invertida — ver `microservice/analysis.py` y `microservice/README.md`,
+sección "Pierna derecha vs. izquierda". Si quedó seteada en el dashboard de Render no hace daño,
+simplemente se ignora.)
 
 ### Endpoints
 
