@@ -1,7 +1,7 @@
 import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { AnalysisServiceResponse, EquationSettings, Pierna } from "@/lib/types";
+import type { AnalysisServiceResponse, EquationSettings } from "@/lib/types";
 
 const ANALYSIS_SERVICE_URL = process.env.NEXT_PUBLIC_ANALYSIS_SERVICE_URL!;
 
@@ -20,17 +20,19 @@ export async function runAnalysisAndPersist(params: {
   userId: string;
   csvBlob: Blob;
   csvFilename: string;
-  pierna: Pierna;
   settings: EquationSettings;
 }) {
-  const { supabase, fileId, userId, csvBlob, csvFilename, pierna, settings } = params;
+  const { supabase, fileId, userId, csvBlob, csvFilename, settings } = params;
 
   await supabase.from("files").update({ status: "processing" }).eq("id", fileId);
 
   try {
     const form = new FormData();
     form.set("file", csvBlob, csvFilename);
-    form.set("pierna", pierna);
+    // No se envía "pierna": el ajuste automático de sentido del eje Z (celda 13
+    // del notebook) corre siempre en el microservicio y por construcción
+    // matemática cancela cualquier inversión previa — declarar la pierna ya no
+    // cambia el resultado (ver [[pierna_derecha_izquierda]] en memoria).
     form.set("alpha", String(settings.alpha));
     form.set("umbral_balanceo_deg_s", String(settings.umbral_balanceo_deg_s));
     form.set("umbral_tc_deg_s", String(settings.umbral_tc_deg_s));

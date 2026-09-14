@@ -2,7 +2,7 @@ import { after } from "next/server";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { runAnalysisAndPersist } from "@/lib/run-analysis";
-import type { EquationSettings, Pierna } from "@/lib/types";
+import type { EquationSettings } from "@/lib/types";
 
 export const maxDuration = 60;
 
@@ -23,13 +23,9 @@ export async function POST(request: Request) {
 
   const form = await request.formData();
   const file = form.get("file");
-  const pierna = form.get("pierna");
 
   if (!(file instanceof File)) {
     return NextResponse.json({ error: "Falta el archivo CSV." }, { status: 422 });
-  }
-  if (pierna !== "derecha" && pierna !== "izquierda") {
-    return NextResponse.json({ error: "Pierna inválida." }, { status: 422 });
   }
   if (file.size === 0 || file.size > MAX_CSV_BYTES) {
     return NextResponse.json({ error: "El archivo está vacío o supera 4MB." }, { status: 422 });
@@ -61,11 +57,16 @@ export async function POST(request: Request) {
 
   const { data: fileRow, error: insertError } = await supabase
     .from("files")
+    // "pierna" ya no se le pide al usuario (ver [[pierna_derecha_izquierda]] en
+    // memoria: declararla no cambia el resultado del análisis desde que el
+    // ajuste automático de sentido corre siempre). Se guarda un valor fijo
+    // solo para satisfacer la columna NOT NULL; la pierna que se muestra en la
+    // UI se deriva de `deteccion_lado` una vez que el análisis termina.
     .insert({
       uploaded_by: user.id,
       nombre_original: file.name,
       storage_path: storagePath,
-      pierna: pierna as Pierna,
+      pierna: "derecha",
     })
     .select("id")
     .single<{ id: string }>();
@@ -81,7 +82,6 @@ export async function POST(request: Request) {
       userId: user.id,
       csvBlob,
       csvFilename: file.name,
-      pierna: pierna as Pierna,
       settings,
     }),
   );

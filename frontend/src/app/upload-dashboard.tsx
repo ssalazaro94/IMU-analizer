@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { logout } from "./actions";
-import type { AnalysisResultRow, FileRow, FileStatus, Pierna } from "@/lib/types";
+import type { AnalysisResultRow, FileRow, FileStatus } from "@/lib/types";
 
 const ESTADO_LABEL: Record<FileStatus, string> = {
   pending: "En cola",
@@ -20,6 +20,18 @@ const ESTADO_CLASS: Record<FileStatus, string> = {
   error: "text-red-600",
 };
 
+// El microservicio ajusta automáticamente el sentido del eje Z (ver
+// [[pierna_derecha_izquierda]] en memoria) — "pierna+auto" identifica los
+// análisis que ya corrieron con ese ajuste. Los análisis previos a ese fix no
+// tienen esta info de forma confiable, así que se muestran como "Sin identificar"
+// en vez de adivinar con datos viejos.
+function piernaDetectada(result: AnalysisResultRow | undefined): string {
+  if (!result || result.deteccion_lado?.metodo !== "pierna+auto") {
+    return "Sin identificar";
+  }
+  return result.deteccion_lado.inversion_aplicada ? "Derecha" : "Izquierda";
+}
+
 export function UploadDashboard({
   user,
   initialFiles,
@@ -31,7 +43,6 @@ export function UploadDashboard({
 }) {
   const [files, setFiles] = useState<FileRow[]>(initialFiles);
   const [results, setResults] = useState<Record<string, AnalysisResultRow>>(initialResults);
-  const [pierna, setPierna] = useState<Pierna>("derecha");
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [reanalyzingId, setReanalyzingId] = useState<string | null>(null);
@@ -89,7 +100,6 @@ export function UploadDashboard({
 
     const formData = new FormData();
     formData.set("file", file);
-    formData.set("pierna", pierna);
 
     setUploading(true);
     try {
@@ -210,18 +220,6 @@ export function UploadDashboard({
           className="block w-full text-sm text-neutral-600 file:mr-4 file:rounded-lg file:border-0 file:bg-neutral-100 file:px-3.5 file:py-2 file:text-sm file:font-medium file:text-neutral-700 hover:file:bg-neutral-200"
         />
 
-        <div>
-          <label className="mb-1.5 block text-sm font-medium text-neutral-700">Pierna</label>
-          <select
-            value={pierna}
-            onChange={(e) => setPierna(e.target.value as Pierna)}
-            className="w-full rounded-md border border-neutral-300 px-3.5 py-2.5 text-sm text-neutral-900 outline-none focus:border-[#1A73E8] focus:ring-1 focus:ring-[#1A73E8]"
-          >
-            <option value="derecha">Derecha</option>
-            <option value="izquierda">Izquierda</option>
-          </select>
-        </div>
-
         {error && <p className="text-sm text-red-600">{error}</p>}
 
         <button
@@ -242,6 +240,7 @@ export function UploadDashboard({
 
         {files.map((file) => {
           const result = results[file.id];
+          const pierna = piernaDetectada(result);
           return (
             <div
               key={file.id}
@@ -253,7 +252,16 @@ export function UploadDashboard({
                     {file.nombre_original}
                   </p>
                   <p className="text-xs text-neutral-600">
-                    Pierna {file.pierna} · {new Date(file.created_at).toLocaleString()}
+                    <span
+                      className={
+                        pierna === "Sin identificar"
+                          ? "italic text-neutral-400"
+                          : "font-medium text-neutral-700"
+                      }
+                    >
+                      {pierna}
+                    </span>{" "}
+                    · {new Date(file.created_at).toLocaleString()}
                   </p>
                 </div>
                 <span className={`shrink-0 text-xs font-medium ${ESTADO_CLASS[file.status]}`}>

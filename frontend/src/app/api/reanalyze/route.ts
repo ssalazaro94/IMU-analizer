@@ -61,7 +61,6 @@ export async function POST(request: Request) {
       userId: user.id,
       csvBlob: csvFile,
       csvFilename: fileRow.nombre_original,
-      pierna: fileRow.pierna,
       settings,
     }),
   );
