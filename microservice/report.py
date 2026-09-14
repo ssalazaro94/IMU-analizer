@@ -68,7 +68,7 @@ def _pagina_grafico(pdf: PdfPages, resultado: dict, nombre_archivo: str | None) 
         f"{parametros['umbral_balanceo_deg_s']} deg/s, umbral TC: "
         f"{parametros['umbral_tc_deg_s']} deg/s, distancia mín. balanceo: "
         f"{parametros['distancia_min_balanceo_s']} s, distancia mín. mínimos: "
-        f"{parametros['distancia_min_minimos_s']} s (método de lado: {deteccion['metodo']})"
+        f"{parametros['distancia_min_minimos_s']} s"
     )
     fig.text(0.08, 0.94, encabezado, ha="left", va="top", fontsize=9, family="monospace")
 

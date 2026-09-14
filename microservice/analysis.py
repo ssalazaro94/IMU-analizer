@@ -11,20 +11,22 @@ cambios deliberados respecto al notebook original:
 2. Los umbrales/parámetros del filtro son argumentos, no constantes.
 3. El notebook original se grabó con el sensor en la pierna derecha. Los
    datos de la pierna izquierda quedan verticalmente en espejo (signo
-   invertido) respecto a los de la derecha, así que hay dos formas de
-   corregirlo, seleccionables con ``metodo_deteccion_lado``:
+   invertido) respecto a los de la derecha, así que se invierte la señal
+   cruda ANTES de filtrar cuando ``pierna="izquierda"``.
 
-   - ``"pierna"`` (recomendado, default): se invierte la señal cruda según
-     el parámetro explícito ``pierna`` ("derecha"/"izquierda") que declara
-     quien sube el archivo. Determinista.
-   - ``"auto"``: heurística original del notebook — si el mínimo de la
-     señal filtrada tiene mayor magnitud que el máximo, se invierte. No usa
-     el parámetro ``pierna`` para decidir la inversión (frágil si el evento
-     de mayor magnitud no es el de balanceo).
-
-   El método activo se configura por variable de entorno
-   ``METODO_DETECCION_LADO`` en el microservicio (ver ``main.py``); ambos
-   métodos conviven en el código.
+   IMPORTANTE (corregido 2026-09-14, con CSVs reales del cliente): el
+   ajuste automático de sentido del eje Z de la celda 13 del notebook
+   (invertir si ``|min| > |max|`` en la señal filtrada) **no es opcional
+   en el notebook original — siempre corre**, sin importar la pierna. Antes
+   este ajuste vivía detrás de un ``metodo_deteccion_lado`` configurable
+   que en producción estaba en modo ``"pierna"`` (sin el ajuste automático),
+   así que "derecha" nunca reproducía Colab exacto para grabaciones donde
+   ese ajuste automático sí disparaba — la señal quedaba con la polaridad
+   invertida, duplicando falsamente los eventos detectados (~2x la cadencia
+   real). Se verificó con dos CSV reales del cliente (uno de cada pierna)
+   que restaurar el ajuste automático como paso incondicional, sumado a la
+   inversión previa por ``pierna`` para el lado izquierdo, reproduce
+   exactamente los números de referencia del notebook para ambos archivos.
 """
 
 from __future__ import annotations
@@ -37,7 +39,6 @@ from scipy.signal import find_peaks
 
 COLUMNAS_REQUERIDAS = ["SampleTimeFine", "Gyr_Z"]
 PIERNAS_VALIDAS = ("derecha", "izquierda")
-METODOS_DETECCION_LADO_VALIDOS = ("pierna", "auto")
 
 
 class DatosInsuficientesError(Exception):
@@ -74,17 +75,11 @@ def analizar_marcha(
     distancia_min_balanceo_s: float = 0.5,
     distancia_min_minimos_s: float = 0.3,
     pierna: str = "derecha",
-    metodo_deteccion_lado: str = "pierna",
 ) -> dict:
     if len(df) < 3:
         raise DatosInsuficientesError("El CSV no tiene suficientes muestras para analizar.")
     if pierna not in PIERNAS_VALIDAS:
         raise ValueError(f"pierna inválida: {pierna!r}. Debe ser una de {PIERNAS_VALIDAS}.")
-    if metodo_deteccion_lado not in METODOS_DETECCION_LADO_VALIDOS:
-        raise ValueError(
-            f"metodo_deteccion_lado inválido: {metodo_deteccion_lado!r}. "
-            f"Debe ser uno de {METODOS_DETECCION_LADO_VALIDOS}."
-        )
 
     tiempo_segundos = df["SampleTimeFine"].to_numpy() / 1_000_000  # microsegundos -> segundos
     diffs = np.diff(tiempo_segundos)
@@ -96,9 +91,9 @@ def analizar_marcha(
 
     gyr_z_crudo = df["Gyr_Z"].to_numpy(dtype=float)
 
-    # Método "pierna": inversión determinista según el lado declarado, ANTES de
-    # filtrar (el filtro es lineal, así que invertir antes o después da lo mismo).
-    inversion_por_pierna = metodo_deteccion_lado == "pierna" and pierna == "izquierda"
+    # Inversión determinista según el lado declarado, ANTES de filtrar (el
+    # filtro es lineal, así que invertir antes o después da lo mismo).
+    inversion_por_pierna = pierna == "izquierda"
     if inversion_por_pierna:
         gyr_z_crudo = -gyr_z_crudo
 
@@ -107,9 +102,10 @@ def analizar_marcha(
 
     senal = gyr_z_filt.copy()
 
-    # Método "auto": heurística original del notebook, solo si está activa.
+    # Ajuste automático de sentido del eje Z, igual que la celda 13 del
+    # notebook: SIEMPRE se aplica, sin importar la pierna declarada.
     inversion_automatica = False
-    if metodo_deteccion_lado == "auto" and abs(np.min(senal)) > abs(np.max(senal)):
+    if abs(np.min(senal)) > abs(np.max(senal)):
         senal = -senal
         inversion_automatica = True
 
@@ -191,7 +187,7 @@ def analizar_marcha(
         },
         "frecuencia_muestreo_hz": frecuencia_muestreo,
         "deteccion_lado": {
-            "metodo": metodo_deteccion_lado,
+            "metodo": "pierna+auto",
             "pierna_declarada": pierna,
             "inversion_aplicada": inversion_por_pierna or inversion_automatica,
         },

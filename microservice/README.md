@@ -56,28 +56,22 @@ Lo que **falta** para producción (ver también "Pendientes" al final):
 ## Pierna derecha vs. izquierda
 
 El notebook original se grabó con el sensor en la pierna **derecha**. Los datos de la pierna
-**izquierda** quedan verticalmente en espejo (signo invertido) respecto a los de la derecha, así
-que el microservicio necesita saber qué pierna es cada CSV para invertir la señal antes de
-detectar eventos.
+**izquierda** quedan verticalmente en espejo (signo invertido) respecto a los de la derecha.
 
-Hay dos métodos de corrección implementados, ambos conviven en el código
-(`analysis.py`) y se elige cuál está activo con la variable de entorno
-`METODO_DETECCION_LADO` (ver `.env.example`):
+**Corregido 2026-09-14** (con CSV reales del cliente): `analysis.py` invierte la señal cruda
+cuando `pierna="izquierda"`, y además el ajuste automático de sentido de la celda 13 del
+notebook (invertir si `|min| > |max|` en la señal filtrada) corre **siempre**, sin excepción —
+igual que en Colab, donde no era opcional. Antes ese ajuste vivía detrás de una variable de
+entorno (`METODO_DETECCION_LADO`, ya retirada) que en producción lo dejaba apagado, así que
+`pierna=derecha` no reproducía Colab exacto para grabaciones donde ese ajuste sí disparaba —
+exactamente lo que reportó el cliente (marcha invertida).
 
-- **`pierna`** (default, recomendado): determinista. Invierte la señal cruda según el parámetro
-  `pierna` que manda el cliente en cada request. Requiere que el frontend/usuario declare
-  correctamente la pierna al subir el CSV.
-- **`auto`**: heurística original del notebook. Invierte según qué extremo de la señal filtrada
-  tiene mayor magnitud, sin usar el parámetro `pierna` para decidir. Sirve como respaldo si el
-  parámetro declarado no es confiable, pero es más frágil.
+Por construcción matemática, este ajuste automático cancela cualquier inversión previa
+(`canonicalize(x) == canonicalize(-x)` siempre), así que en la práctica el parámetro `pierna`
+ya no cambia el resultado del análisis para ningún archivo — queda solo como dato declarado/de
+registro. Se decidió mantenerlo en la UI por ahora (decisión del usuario, 2026-09-14).
 
-Cada respuesta de `/analyze` incluye `deteccion_lado` para poder auditar qué pasó en cada
-análisis. Declarar mal la pierna hace que falle la detección de eventos (HTTP 422) en vez de
-devolver métricas silenciosamente incorrectas — se verificó con un test automatizado.
-
-Para cambiar de método en local, copiar `.env.example` a `.env` y editar `METODO_DETECCION_LADO`.
-En Render se setea en el dashboard del servicio (Environment → Add Environment Variable); en
-Cloud Run sería `gcloud run deploy ... --set-env-vars METODO_DETECCION_LADO=pierna`.
+Cada respuesta de `/analyze` incluye `deteccion_lado` para auditar qué pasó en cada análisis.
 
 ## Requisitos
 
@@ -189,9 +183,8 @@ Requiere una cuenta de Render (no pide tarjeta para el free tier) y el repo push
 2. **Root Directory**: `microservice` (el `Dockerfile` está ahí, no en la raíz del repo).
 3. **Environment**: `Docker` (Render detecta el `Dockerfile` automáticamente).
 4. **Instance Type**: Free.
-5. Agregar variables de entorno necesarias (ej. `METODO_DETECCION_LADO=pierna`) en
-   Environment → Add Environment Variable. Render setea `PORT` automáticamente; el `Dockerfile`
-   ya lo respeta (`${PORT}`), no hace falta configurarlo a mano.
+5. No hace falta agregar variables de entorno propias (ver `.env.example`). Render setea `PORT`
+   automáticamente; el `Dockerfile` ya lo respeta (`${PORT}`), no hace falta configurarlo a mano.
 6. Deploy. Al terminar, Render da la URL pública (`https://<servicio>.onrender.com`) — esa es la
    URL que usará el backend de Next.js para llamar a `/analyze`.
 
@@ -215,8 +208,7 @@ gcloud config set project TU_PROYECTO_ID
 gcloud run deploy imu-microservice \
   --source . \
   --region us-central1 \
-  --allow-unauthenticated \
-  --set-env-vars METODO_DETECCION_LADO=pierna
+  --allow-unauthenticated
 ```
 
 `gcloud run deploy --source .` construye la imagen con Cloud Build y la despliega, sin que haga

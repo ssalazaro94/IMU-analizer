@@ -36,7 +36,6 @@ def main() -> None:
     parser.add_argument("--umbral-tc-deg-s", type=float, default=-20.0)
     parser.add_argument("--distancia-min-balanceo-s", type=float, default=0.5)
     parser.add_argument("--distancia-min-minimos-s", type=float, default=0.3)
-    parser.add_argument("--metodo-deteccion-lado", choices=("pierna", "auto"), default="pierna")
     parser.add_argument("--salida-png", type=Path, default=Path("diagnostico_senal.png"))
     args = parser.parse_args()
 
@@ -45,20 +44,24 @@ def main() -> None:
     frecuencia_muestreo = 1 / float(np.mean(np.diff(tiempo_segundos)))
 
     gyr_z_crudo = df["Gyr_Z"].to_numpy(dtype=float)
-    inversion_por_pierna = args.metodo_deteccion_lado == "pierna" and args.pierna == "izquierda"
+    inversion_por_pierna = args.pierna == "izquierda"
     if inversion_por_pierna:
         gyr_z_crudo = -gyr_z_crudo
 
     gyr_z_filt = _filtrar_forward_backward(gyr_z_crudo, args.alpha)
     senal = -gyr_z_filt
 
+    # Igual que la celda 13 del notebook: SIEMPRE corre (ver analysis.py).
+    # Por construcción cancela matemáticamente cualquier inversión previa,
+    # así que --pierna ya no cambia el resultado — se deja como dato
+    # informativo/de registro únicamente.
     inversion_automatica = False
-    if args.metodo_deteccion_lado == "auto" and abs(np.min(senal)) > abs(np.max(senal)):
+    if abs(np.min(senal)) > abs(np.max(senal)):
         senal = -senal
         inversion_automatica = True
 
     print(f"Muestras: {len(df)}  ·  Frecuencia estimada: {frecuencia_muestreo:.2f} Hz")
-    print(f"Pierna declarada: {args.pierna}  ·  método: {args.metodo_deteccion_lado}  ·  "
+    print(f"Pierna declarada: {args.pierna}  ·  "
           f"inversión aplicada: {inversion_por_pierna or inversion_automatica}")
     print(f"Señal filtrada — min: {senal.min():.2f} deg/s, max: {senal.max():.2f} deg/s, "
           f"media: {senal.mean():.2f} deg/s\n")
@@ -89,11 +92,10 @@ def main() -> None:
 
     if len(balanceo_medio) == 0:
         print(
-            "\n⚠ Con el umbral actual no hay NINGÚN pico de balanceo. Si la señal tiene "
-            "valores altos solo del lado NEGATIVO (mirá el min/max de arriba), probablemente "
-            "la pierna esté mal declarada o el signo esperado esté invertido para esta "
-            "grabación en particular — probá con --pierna izquierda o revisá si esta grabación "
-            "necesita la inversión contraria a la esperada."
+            "\n⚠ Con el umbral actual no hay NINGÚN pico de balanceo. Como el ajuste "
+            "automático de sentido (celda 13) ya corrió, esto probablemente sea un problema "
+            "de calibración de umbrales o de calidad de la señal, no de pierna/orientación "
+            "(--pierna ya no afecta el resultado, ver docstring de analysis.py)."
         )
 
     fig, ax = plt.subplots(figsize=(14, 6))

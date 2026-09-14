@@ -3,29 +3,16 @@ de un sensor Xsens DOT. Pensado para desplegarse en Render (o cualquier
 runtime que respete la variable de entorno ``PORT``, como Cloud Run)."""
 
 import io
-import os
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, File, Form, HTTPException, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from analysis import (
-    METODOS_DETECCION_LADO_VALIDOS,
-    DatosInsuficientesError,
-    analizar_marcha,
-    cargar_csv,
-)
+from analysis import DatosInsuficientesError, analizar_marcha, cargar_csv
 from report import generar_pdf
 
 load_dotenv()  # no-op si no hay .env (ej. en Render/Cloud Run, donde las env vars se setean directo)
-
-METODO_DETECCION_LADO = os.getenv("METODO_DETECCION_LADO", "pierna")
-if METODO_DETECCION_LADO not in METODOS_DETECCION_LADO_VALIDOS:
-    raise RuntimeError(
-        f"METODO_DETECCION_LADO={METODO_DETECCION_LADO!r} inválido. "
-        f"Debe ser uno de {METODOS_DETECCION_LADO_VALIDOS}."
-    )
 
 app = FastAPI(title="IMU Analizer - Microservicio de análisis de marcha")
 
@@ -69,7 +56,6 @@ async def analyze(
             distancia_min_balanceo_s=distancia_min_balanceo_s,
             distancia_min_minimos_s=distancia_min_minimos_s,
             pierna=pierna,
-            metodo_deteccion_lado=METODO_DETECCION_LADO,
         )
     except (DatosInsuficientesError, ValueError) as error:
         raise HTTPException(status_code=422, detail=str(error))

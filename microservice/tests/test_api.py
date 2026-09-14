@@ -43,13 +43,17 @@ def test_analyze_pierna_izquierda(csv_marcha_izquierda: bytes):
     assert body["deteccion_lado"]["inversion_aplicada"] is True
 
 
-def test_analyze_pierna_mal_declarada_devuelve_422(csv_marcha_izquierda: bytes):
+def test_analyze_pierna_mal_declarada_igual_da_resultado_correcto(csv_marcha_izquierda: bytes):
+    """El ajuste automático de sentido (igual que la celda 13 del notebook)
+    corre siempre, así que declarar mal la pierna ya no rompe la detección
+    (a diferencia del comportamiento previo a 2026-09-14)."""
     r = client.post(
         "/analyze",
         files={"file": ("sensor.csv", csv_marcha_izquierda, "text/csv")},
         data={"pierna": "derecha"},
     )
-    assert r.status_code == 422
+    assert r.status_code == 200
+    assert len(r.json()["eventos"]["indices_contacto_inicial"]) >= 10
 
 
 def test_analyze_csv_sin_columnas_requeridas_devuelve_422():
