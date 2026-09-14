@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { logout } from "./actions";
@@ -176,14 +177,24 @@ export function UploadDashboard({
             {user.email} · {user.role === "root" ? "Root" : "Admin"}
           </p>
         </div>
-        <form action={logout}>
-          <button
-            type="submit"
-            className="rounded-md border border-neutral-300 px-3.5 py-2 text-sm font-medium text-neutral-700 transition hover:bg-neutral-50"
-          >
-            Cerrar sesión
-          </button>
-        </form>
+        <div className="flex items-center gap-2">
+          {user.role === "root" && (
+            <Link
+              href="/configuracion"
+              className="rounded-md border border-neutral-300 px-3.5 py-2 text-sm font-medium text-neutral-700 transition hover:bg-neutral-50"
+            >
+              Configuración
+            </Link>
+          )}
+          <form action={logout}>
+            <button
+              type="submit"
+              className="rounded-md border border-neutral-300 px-3.5 py-2 text-sm font-medium text-neutral-700 transition hover:bg-neutral-50"
+            >
+              Cerrar sesión
+            </button>
+          </form>
+        </div>
       </header>
 
       <form
