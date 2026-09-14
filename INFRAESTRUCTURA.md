@@ -196,32 +196,30 @@ simplemente se ignora.)
 
 ## Vercel (frontend)
 
-**Todavía no desplegado** — el frontend solo se probó corriendo local (`pnpm dev`) contra el
-proyecto real de Supabase y (para `/report`) contra el microservicio corriendo local o en Render.
+**Desplegado y en uso real desde el 2026-09-12.** Proyecto
+`sebassalazaro20-8844s-projects/imu-analizer`, URL de producción `imu-analizer.vercel.app`.
+El Vercel CLI está logueado en esta máquina (`vercel link --project imu-analizer` desde
+`frontend/` para reconectar; `vercel env ls production`, `vercel logs <url>`).
 
-Configuración ya preparada para cuando se cree el proyecto en Vercel:
-
-- **Root Directory**: `frontend` (monorepo — hay que fijarlo a mano en la config del proyecto de
-  Vercel, no se puede desde `vercel.json`).
+- **Root Directory**: `frontend` (monorepo — se fijó a mano en la config del proyecto de Vercel,
+  no se puede desde `vercel.json`).
 - `frontend/vercel.json`: fija `framework: nextjs` y los comandos (`pnpm install` / `pnpm build`).
-- Variables de entorno a cargar en Project Settings → Environment Variables (nunca en
-  `vercel.json`):
-  - `NEXT_PUBLIC_SUPABASE_URL` = `https://qybvicgpaaznpjpatdzi.supabase.co`
-  - `NEXT_PUBLIC_SUPABASE_ANON_KEY` = la publishable key del proyecto (ver dashboard de Supabase
-    → Project Settings → API; también está en `frontend/.env.local`, que no está commiteado).
-  - `NEXT_PUBLIC_ANALYSIS_SERVICE_URL` = `https://imu-analizer.onrender.com` en producción (en
-    local se puede apuntar a `http://localhost:8000` mientras se prueba el microservicio sin
-    depender de Render).
+- Variables de entorno cargadas en Project Settings → Environment Variables, todas marcadas
+  **"Sensitive"** (ni el dashboard ni la CLI pueden releer su valor una vez creadas, solo
+  sobreescribir — para verificar un valor, comparar contra `frontend/.env.local` local):
+  - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_ANALYSIS_SERVICE_URL`
+    (`https://imu-analizer.onrender.com` en producción).
 
-### Riesgo conocido, no validado en producción
+### Riesgo que preocupaba, ya validado en producción real
 
 Los tres Route Handlers que llaman al microservicio (`/api/analyze`, `/api/reanalyze`,
 `/api/report`) usan `after()` de Next.js para correr la llamada al microservicio **después** de
-responderle al cliente (necesario por el cold start de Render, de hasta ~30-50s, para no bloquear
-la respuesta al navegador). En Vercel, `after()` depende del límite de duración/`waitUntil` de la
-función (`maxDuration` está seteado a 60s en esas rutas) — no se probó todavía si esto alcanza en
-el plan real de Vercel una vez desplegado. Si falla en producción, la alternativa es aumentar
-`maxDuration`/cambiar de plan, o mover el disparo del análisis a una cola real en vez de `after()`.
+responderle al cliente (necesario por el cold start de Render, de hasta ~30-50s). Preocupaba si
+`maxDuration=60s` alcanzaba en el plan real de Vercel — **ya se confirmó que sí**: hay archivos
+reales del cliente subidos y procesados con éxito en producción (`files.status='done'`) el
+2026-09-13, incluido al menos un caso con el microservicio recién redesplegado (cold start real).
+Si en algún momento empieza a fallar, la alternativa sigue siendo aumentar `maxDuration`/cambiar
+de plan, o mover el disparo del análisis a una cola real en vez de `after()`.
 
 ## Flujo de subida y análisis (async)
 
@@ -263,8 +261,13 @@ del microservicio ya deployada ahí.
 
 ## Resumen de lo que falta (a nivel infraestructura, no de features de producto)
 
-- Crear el proyecto en Vercel y cargar las env vars.
-- Restringir CORS del microservicio al dominio real de Vercel una vez exista.
+- Restringir CORS del microservicio al dominio real de Vercel.
 - Definir autenticación entre Next.js y el microservicio (hoy el endpoint es público).
-- Validar `after()`/`maxDuration` en Vercel real contra el cold start de Render.
-- Calibrar los umbrales default del algoritmo contra CSV reales del sensor (en curso).
+- Calibrar los umbrales default del algoritmo contra más CSV reales del sensor a medida que el
+  cliente mande más (2 probados hasta el 2026-09-14).
+- Librería de gráficas en el frontend (ECharts, decidido) para replicar los `plt.plot`/`scatter`
+  del notebook — todavía no construida.
+
+Ya resuelto (no repetir): proyecto en Vercel creado y con env vars cargadas; `after()`/`maxDuration`
+validado contra cold start real de Render, con archivos reales de cliente procesados con éxito en
+producción.

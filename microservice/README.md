@@ -5,24 +5,24 @@ un endpoint HTTP. Pensado para desplegarse en **Render** (free tier, sin tarjeta
 el código portable a **Google Cloud Run** para migrar más adelante sin reescribir nada — ver
 "Desplegar" más abajo.
 
-## Estado actual (2026-09-11)
+## Estado actual (actualizado 2026-09-14)
 
-**Sí, está listo para probarse.** Se validó levantando el servidor real (`uvicorn`) y pegándole
-con `curl` (incluyendo casos de error), y con una suite de 13 tests automatizados (`pytest`) que
-corren contra el algoritmo y contra el endpoint HTTP real — todos pasan. Se verificó el flujo
-completo documentado abajo (`python3 -m venv .venv` → `pip install` → `pytest` → `uvicorn`) de
-punta a punta, con `python3-venv` instalado.
+**En producción real, con cliente real.** Desplegado en Render (`imu-analizer.onrender.com`),
+llamado por el frontend en Vercel. Validado end-to-end con CSV reales del sensor (no solo la señal
+sintética de los tests) — incluido un bug real de producción encontrado y corregido el 2026-09-14
+(ver `analysis.py`, sección "Pierna derecha vs. izquierda" abajo): la celda 13 del notebook
+(ajuste automático de sentido del eje Z) no corría en producción, así que el resultado no
+reproducía Colab exacto para algunas grabaciones. 11 tests automatizados (`pytest`), todos pasan.
 
-Lo que **falta** para producción (ver también "Pendientes" al final):
+Lo que **sigue faltando** (sin cambios desde 2026-09-11, ver también "Pendientes" al final):
 
-- No se probó todavía con un CSV real del sensor Xsens DOT — todo lo anterior usa una señal de
-  marcha sintética generada por código, porque no hay ningún CSV real en el repo.
-- No se probó el `Dockerfile` / deploy real en esta sesión (el sandbox donde corre el asistente
-  no tenía permisos sobre Docker). El código del Dockerfile es estándar, pero conviene que lo
-  corras vos una vez antes de confiar en el deploy a Render.
-- CORS abierto (`allow_origins=["*"]`) y sin autenticación — hay que cerrarlo antes de exponerlo
-  públicamente con datos reales.
+- CORS abierto (`allow_origins=["*"]`) y sin autenticación entre Next.js y el microservicio —
+  cualquiera con la URL puede pegarle a `/analyze` directo. Pendiente restringir al dominio real
+  de Vercel antes de manejar datos de más pacientes/clientes.
 - No lee `csv_url` (Supabase Storage), solo recibe el archivo subido directo (`multipart/form-data`).
+- No se probó el build de `Dockerfile` localmente en ninguna sesión del asistente (sandbox sin
+  permisos sobre Docker) — pero el deploy real a Render sí funciona, así que esto ya no bloquea
+  nada, es solo una verificación local que quedó sin hacer.
 
 ## Endpoints
 
@@ -220,14 +220,14 @@ IAM invoker) en vez de depender solo de CORS.
 
 ## Pendientes
 
-- **`/report` (PDF) todavía no está deployado en Render** — se agregó en esta sesión (2026-09-11)
-  y solo se probó localmente (`pytest` no lo cubre todavía; se probó a mano con `curl` generando
-  un PDF real y se inspeccionó visualmente). Hace falta commitear/pushear para que Render lo tenga.
-- Probar con un CSV real del sensor Xsens DOT (derecha e izquierda) y, si hace falta, recalibrar
-  los umbrales default contra esos datos reales.
-- Probar el build de Docker y el deploy a Render de punta a punta.
-- Restringir CORS al dominio real del frontend.
+- Restringir CORS al dominio real del frontend (`allow_origins=["*"]` sigue abierto).
 - Autenticación entre el backend de Next.js y este microservicio (o dejarlo público si el riesgo
   es aceptable para el caso de uso).
 - Endpoint que lea el CSV desde una URL firmada de Supabase Storage en vez de (o además de) recibir
   el archivo subido directo.
+- Calibrar los umbrales default contra más CSV reales a medida que el cliente mande más (solo se
+  probaron 2 hasta ahora, ver `analysis.py`).
+
+Ya resuelto (no repetir): `/report` (PDF) está deployado y probado en Render; se probó con CSV
+reales del sensor (derecha e izquierda); el deploy a Render funciona de punta a punta en
+producción real.
